@@ -18,11 +18,26 @@ exporters:
 
 processors:
   batch:
-
-
+  tail_sampling:
+    decision_wait: 5s
+    num_traces: 100
+    expected_new_traces_per_sec: 10
+    policies:
+      [
+          {
+            name: policy-status_code,
+            type: status_code,
+            status_code: {status_codes: [ERROR]}
+          },
+         {
+            name: policy-probabilistic,
+            type: probabilistic,
+            probabilistic: {sampling_percentage: 10}
+         }
+      ]
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [tail_sampling]
       exporters: [jaeger]
