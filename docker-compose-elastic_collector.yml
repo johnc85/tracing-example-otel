@@ -49,8 +49,7 @@ services:
       - "14268:14268"
       - "14250:14250"
       - "9411:9411" #Zipkin Http
-      - "4317:4317" #OTLP gRPC
-      - "4318:4318" #OTLP http
+
     environment:
       - SPAN_STORAGE_TYPE=elasticsearch
       - LOG_LEVEL=debug
@@ -64,6 +63,22 @@ services:
       - opentracing
     depends_on:
       - elasticsearch
+  otelcollector:
+      image: ${OTELCOL_IMG}
+      container_name: otelcollector
+      restart: on-failure
+      command: ["--config=/etc/otel-collector-config.yaml"]
+      volumes:
+        - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      ports:
+        # - "1888:1888"   # pprof extension
+        # - "8888:8888"   # Prometheus metrics exposed by the collector
+        # - "8889:8889"   # Prometheus exporter metrics
+        - "13133:13133" # health_check extension
+        - "4317:4317"   # OTLP gRPC receiver
+        - "55679:55679" # zpages extension
+      networks:
+       - opentracing
 
   animal-name-service:
     image: animal-name-service:0.1.0
@@ -77,7 +92,7 @@ services:
       - SPRING_APPLICATION_NAME=animal
       - OPENTRACING_JAEGER_HOST=jaeger-agent
       - OTEL_TRACES_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector-elastic:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcollector:4317
       - OTEL_SERVICE_NAME=animal
     volumes:
       - ./opentelemetry-javaagent.jar:/opt/app/opentelemetry-javaagent.jar
@@ -99,7 +114,7 @@ services:
       - LOG_LEVEL=debug
       - OPENTRACING_JAEGER_HOST=jaeger-agent
       - OTEL_TRACES_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector-elastic:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcollector:4317
       - OTEL_SERVICE_NAME=scientist
     volumes:
       - ./opentelemetry-javaagent.jar:/opt/app/opentelemetry-javaagent.jar
@@ -119,7 +134,7 @@ services:
       - LOG_LEVEL=debug
       - OPENTRACING_JAEGER_HOST=jaeger-agent
       - OTEL_TRACES_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector-elastic:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcollector:4317
       - OTEL_SERVICE_NAME=name-generator
       - JAVA_EXTRA_OPTS=-Danimal.service.prefix.url=http://animal-name-service:9000 -Dscientist.service.prefix.url=http://scientist-name-service:8090
     ports:
